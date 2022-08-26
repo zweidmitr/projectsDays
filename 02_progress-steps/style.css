@@ -26,7 +26,7 @@ body {
 
 .progress-container {
   display: flex;
-  justify-content: space-between;  /* Равномерно распределяет все элементы по ширине flex-блока. */
+  justify-content: space-between; /* Равномерно распределяет все элементы по ширине flex-блока. */
   position: relative;
   margin-bottom: 30px;
   max-width: 100%;
@@ -54,7 +54,7 @@ body {
   height: 4px;
   width: 0%;
   z-index: -1;
-  transition: .4s ease;
+  transition: 0.4s ease;
 }
 
 .circle {
