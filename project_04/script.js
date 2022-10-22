@@ -3,12 +3,30 @@
 /////////////////////////////////////////////////
 /////////////////////////////////////////////////
 // BANKIST APP
+
+/////////////////////////////////////////////////
 // Data
+
+// DIFFERENT DATA! Contains movement dates, currency and locale
+
 const account1 = {
   owner: 'Jonas Schmedtmann',
-  movements: [200, 450, -400, 3000, -650, -130, 70, 1300],
+  movements: [200, 455.23, -306.5, 25000, -642.21, -133.9, 79.97, 1300],
   interestRate: 1.2, // %
   pin: 1111,
+
+  movementsDates: [
+    '2019-11-18T21:31:17.178Z',
+    '2019-12-23T07:42:02.383Z',
+    '2022-01-28T09:15:04.904Z',
+    '2022-04-01T10:17:24.185Z',
+    '2022-05-08T14:11:59.604Z',
+    '2022-10-17T17:01:17.194Z',
+    '2022-10-21T23:36:17.929Z',
+    '2022-10-22T10:51:36.790Z',
+  ],
+  currency: 'EUR',
+  locale: 'pt-PT', // de-DE
 }
 
 const account2 = {
@@ -16,24 +34,24 @@ const account2 = {
   movements: [5000, 3400, -150, -790, -3210, -1000, 8500, -30],
   interestRate: 1.5,
   pin: 2222,
+
+  movementsDates: [
+    '2019-11-01T13:15:33.035Z',
+    '2019-11-30T09:48:16.867Z',
+    '2019-12-25T06:04:23.907Z',
+    '2020-01-25T14:18:46.235Z',
+    '2020-02-05T16:33:06.386Z',
+    '2020-04-10T14:43:26.374Z',
+    '2020-06-25T18:49:59.371Z',
+    '2020-07-26T12:01:20.894Z',
+  ],
+  currency: 'USD',
+  locale: 'en-US',
 }
 
-const account3 = {
-  owner: 'Steven Thomas Williams',
-  movements: [200, -200, 340, -300, -20, 50, 400, -460],
-  interestRate: 0.7,
-  pin: 3333,
-}
+const accounts = [account1, account2]
 
-const account4 = {
-  owner: 'Sarah Smith',
-  movements: [430, 1000, 700, 50, 90],
-  interestRate: 1,
-  pin: 4444,
-}
-
-const accounts = [account1, account2, account3, account4]
-
+/////////////////////////////////////////////////
 // Elements
 const labelWelcome = document.querySelector('.welcome')
 const labelDate = document.querySelector('.date')
@@ -60,95 +78,136 @@ const inputLoanAmount = document.querySelector('.form__input--loan-amount')
 const inputCloseUsername = document.querySelector('.form__input--user')
 const inputClosePin = document.querySelector('.form__input--pin')
 
-const displayMovements = function (movements, sort = false) {
+/////////////////////////////////////////////////
+// Functions
+
+const formatMovementDate = function (date) {
+  const calsDaysPassed = (date1, date2) =>
+    Math.round(Math.abs(date2 - date1) / (1000 * 60 * 60 * 24))
+
+  const daysPassed = calsDaysPassed(new Date(), date)
+  console.log(daysPassed)
+
+  if (daysPassed === 0) return 'Today'
+  if (daysPassed === 1) return 'Yesterday'
+  if (daysPassed <= 7) return `${daysPassed} days ago`
+
+  const day = `${date.getDate()}`.padStart(2, 0)
+  const month = `${date.getMonth() + 1}`.padStart(2, 0)
+  const year = date.getFullYear()
+  return `${day}/${month}/${year}`
+}
+
+const displayMovements = function (acc, sort = false) {
   containerMovements.innerHTML = ''
 
-  const movs = sort ? movements.slice().sort((a, b) => a - b) : movements
+  const movs = sort
+    ? acc.movements.slice().sort((a, b) => a - b)
+    : acc.movements
 
   movs.forEach(function (mov, i) {
     const type = mov > 0 ? 'deposit' : 'withdrawal'
 
+    const date = new Date(acc.movementsDates[i])
+    const displayDate = formatMovementDate(date)
+
     const html = `
-    <div class="movements__row">
-          <div class="movements__type movements__type--${type}">${
+      <div class="movements__row">
+        <div class="movements__type movements__type--${type}">${
       i + 1
     } ${type}</div>
-          <div class="movements__value">${mov} €</div>
-        </div>
-        `
+        <div class="movements__date">${displayDate}</div>
+        <div class="movements__value">${mov.toFixed(2)}€</div>
+      </div>
+    `
 
     containerMovements.insertAdjacentHTML('afterbegin', html)
-    // containerMovements.insertAdjacentHTML('beforeend', html)
   })
 }
 
-const calcPrintBalance = function (account) {
-  account.balance = account.movements.reduce((acc, mov) => acc + mov, 0)
-  labelBalance.textContent = `${account.balance} €`
+const calcDisplayBalance = function (acc) {
+  acc.balance = acc.movements.reduce((acc, mov) => acc + mov, 0)
+  labelBalance.textContent = `${acc.balance.toFixed(2)}€`
 }
 
-const calcDisplaySummary = function (account) {
-  const incomes = account.movements
+const calcDisplaySummary = function (acc) {
+  const incomes = acc.movements
     .filter(mov => mov > 0)
     .reduce((acc, mov) => acc + mov, 0)
+  labelSumIn.textContent = `${incomes.toFixed(2)}€`
 
-  labelSumIn.textContent = `${incomes}€`
-
-  const outcomes = account.movements
+  const out = acc.movements
     .filter(mov => mov < 0)
     .reduce((acc, mov) => acc + mov, 0)
+  labelSumOut.textContent = `${Math.abs(out).toFixed(2)}€`
 
-  labelSumOut.textContent = `${outcomes}€`
-
-  const interest = account.movements
+  const interest = acc.movements
     .filter(mov => mov > 0)
-    .map(deposit => (deposit * account.interestRate) / 100)
+    .map(deposit => (deposit * acc.interestRate) / 100)
     .filter((int, i, arr) => {
+      // console.log(arr);
       return int >= 1
     })
-    .reduce((acc, mov) => acc + mov, 0)
-
-  labelSumInterest.textContent = `${interest}€`
+    .reduce((acc, int) => acc + int, 0)
+  labelSumInterest.textContent = `${interest.toFixed(2)}€`
 }
 
 const createUsernames = function (accs) {
-  accs.forEach(acc => {
-    acc.userName = acc.owner
+  accs.forEach(function (acc) {
+    acc.username = acc.owner
       .toLowerCase()
       .split(' ')
-      .map(arr => arr[0])
+      .map(name => name[0])
       .join('')
   })
 }
-
 createUsernames(accounts)
 
-const updateUI = function (account) {
+const updateUI = function (acc) {
   // Display movements
-  displayMovements(account.movements)
+  displayMovements(acc)
+
   // Display balance
-  calcPrintBalance(account)
+  calcDisplayBalance(acc)
+
   // Display summary
-  calcDisplaySummary(account)
+  calcDisplaySummary(acc)
 }
 
-// Event handler
+///////////////////////////////////////
+// Event handlers
 let currentAccount
+
+// FAKE ALWAYS LOGGED IN
+currentAccount = account1
+updateUI(currentAccount)
+containerApp.style.opacity = 100
 
 btnLogin.addEventListener('click', function (e) {
   // Prevent form from submitting
   e.preventDefault()
 
   currentAccount = accounts.find(
-    acc => acc.userName === inputLoginUsername.value
+    acc => acc.username === inputLoginUsername.value
   )
+  console.log(currentAccount)
 
-  if (currentAccount?.pin === Number(inputLoginPin.value)) {
-    // Display UI and Message
+  if (currentAccount?.pin === +inputLoginPin.value) {
+    // Display UI and message
     labelWelcome.textContent = `Welcome back, ${
       currentAccount.owner.split(' ')[0]
     }`
     containerApp.style.opacity = 100
+
+    // Create current date and dime
+    const now = new Date()
+    const day = `${now.getDate()}`.padStart(2, 0)
+    const month = `${now.getMonth() + 1}`.padStart(2, 0)
+    const year = now.getFullYear()
+    const hour = `${now.getHours()}`.padStart(2, 0)
+    const min = `${now.getMinutes()}`.padStart(2, 0)
+
+    labelDate.textContent = `${day}/${month}/${year}, ${hour}:${min}`
 
     // Clear input fields
     inputLoginUsername.value = inputLoginPin.value = ''
@@ -161,22 +220,25 @@ btnLogin.addEventListener('click', function (e) {
 
 btnTransfer.addEventListener('click', function (e) {
   e.preventDefault()
-  const amount = Number(inputTransferAmount.value)
+  const amount = +inputTransferAmount.value
   const receiverAcc = accounts.find(
-    acc => acc.userName === inputTransferTo.value
+    acc => acc.username === inputTransferTo.value
   )
-
-  inputTransferTo.value = inputTransferAmount.value = ''
+  inputTransferAmount.value = inputTransferTo.value = ''
 
   if (
     amount > 0 &&
     receiverAcc &&
     currentAccount.balance >= amount &&
-    receiverAcc?.userName !== currentAccount.userName
+    receiverAcc?.username !== currentAccount.username
   ) {
-    // doing the transfer
+    // Doing the transfer
     currentAccount.movements.push(-amount)
     receiverAcc.movements.push(amount)
+
+    // Add transder date
+    currentAccount.movementsDates.push(new Date().toISOString())
+    receiverAcc.movementsDates.push(new Date().toISOString())
 
     // Update UI
     updateUI(currentAccount)
@@ -186,11 +248,14 @@ btnTransfer.addEventListener('click', function (e) {
 btnLoan.addEventListener('click', function (e) {
   e.preventDefault()
 
-  const amount = Number(inputLoanAmount.value)
+  const amount = Math.floor(inputLoanAmount.value)
 
   if (amount > 0 && currentAccount.movements.some(mov => mov >= amount * 0.1)) {
     // Add movement
     currentAccount.movements.push(amount)
+
+    // Add loan date
+    currentAccount.movementsDates.push(new Date().toISOString())
 
     // Update UI
     updateUI(currentAccount)
@@ -202,12 +267,14 @@ btnClose.addEventListener('click', function (e) {
   e.preventDefault()
 
   if (
-    currentAccount.userName === inputCloseUsername.value &&
-    currentAccount.pin === Number(inputClosePin.value)
+    inputCloseUsername.value === currentAccount.username &&
+    +inputClosePin.value === currentAccount.pin
   ) {
     const index = accounts.findIndex(
-      acc => acc.userName === currentAccount.userName
+      acc => acc.username === currentAccount.username
     )
+    console.log(index)
+    // .indexOf(23)
 
     // Delete account
     accounts.splice(index, 1)
@@ -216,7 +283,7 @@ btnClose.addEventListener('click', function (e) {
     containerApp.style.opacity = 0
   }
 
-  inputClosePin.value = inputCloseUsername.value = ''
+  inputCloseUsername.value = inputClosePin.value = ''
 })
 
 let sorted = false
@@ -226,370 +293,211 @@ btnSort.addEventListener('click', function (e) {
   sorted = !sorted
 })
 
-//////////////////////////////////////////
+/////////////////////////////////////////////////
+/////////////////////////////////////////////////
 // LECTURES
-
-const movements = [200, 450, -400, 3000, -650, -130, 70, 1300]
 /*
-let arr = ['a', 'b', 'c', 'd', 'e']
-
-// SLICE
-console.log(arr.slice(2))
-console.log(arr.slice(2, 4))
-console.log(arr.slice(-2))
-console.log(arr.slice(-1))
-console.log(arr.slice(1, -2))
-console.log(arr.slice())
-// spread
-console.log([...arr])
-console.log('======================')
-
-// SPLICE
-// console.log(arr.splice(2))
-arr.splice(-1)
-console.log(arr)
-arr.splice(1, 2)
-console.log(arr)
-console.log('======================')
-
-// REVERSE
-arr = ['a', 'b', 'c', 'd', 'e']
-const arr2 = ['j', 'i', 'h', 'g', 'f']
-console.log(arr2.reverse())
-console.log(arr2)
-console.log('======================')
-
-// CONCAT
-const letters = arr.concat(arr2)
-console.log(letters)
-console.log([...arr, ...arr2])
-console.log('======================')
-
-// JOIN
-console.log(letters.join(' - '))
-
-const arr = [23, 11, 64]
-console.log(arr[0])
-console.log(arr.at(0))
-
-//getting last array element
-console.log(arr[arr.length - 1])
-console.log(arr.slice(-1)[0])
-console.log(arr.at(-1))
-
-console.log('jonas'.at(0))
-console.log('jonas'.at(-1))
-
-
-
-const movements = [200, 450, -400, 3000, -650, -130, 70, 1300]
-
-// for (const movement of movements) {
-for (const [i, movement] of movements.entries()) {
-  if (movement > 0) {
-    console.log(`Movement ${i + 1}. You deposited ${movement}`)
-  } else {
-    console.log(`Movement ${i + 1}. You withdrew ${Math.abs(movement)}`)
-  }
-}
-
-console.log('------- FOREACH --------')
-movements.forEach(function (movement, index, array) {
-  if (movement > 0) {
-    console.log(`Index movement: ${index}. You deposited ${movement}`)
-  } else {
-    console.log(`Index movement: ${index}. You withdrew ${Math.abs(movement)}`)
-  }
-})
-
-
-
-// MAP
-const currencies = new Map([
-  ['USD', 'United States dollar'],
-  ['EUR', 'Euro'],
-  ['GBP', 'Pound sterling'],
-  [666, 'ups'],
-])
-
-currencies.forEach(function (value, key, map) {
-  console.log(`${key} : ${value}`)
-})
-
-// SET
-const currenciesUnique = new Set([
-  'USD',
-  'EUR',
-  'RU',
-  'RU',
-  'RU',
-  'USD',
-  'GBR',
-  'EUR',
-])
-console.log(currenciesUnique)
-
-currenciesUnique.forEach(function (value, _, map) {
-  console.log(`${value} : ${value}`)
-})
+console.log(23 === 23.0)
 
+// Base 10 - 0 to 9
+// Binary base 2 - 0 to 1
+console.log(0.1 + 0.2)
+console.log(0.1 + 0.2 === 0.3)
 
-const eurToUsd = 1.1
+// Conversion
+console.log(Number('23'))
+console.log(+'23')
 
-const movementsUSD = movements.map(function (value) {
-  return value * eurToUsd
-})
-console.log(movements)
-console.log(movementsUSD)
+// Parsing
+console.log(Number.parseInt('30px', 10))
+console.log(Number.parseInt('e23', 10))
 
-const movementsUSDarr = movements.map(val => val * eurToUsd)
-console.log(movementsUSDarr)
+console.log(Number.parseInt('   2.5rem'))
+console.log(Number.parseFloat('   2.5rem'))
 
-const movementsUSDfor = []
-for (const mov of movements) {
-  movementsUSDfor.push(mov * eurToUsd)
-}
+// console.log(parseFloat('   2.5rem'))
 
-console.log(movementsUSDfor)
+// Checking if value is NaN
+console.log('isNaN =================>=')
+console.log(Number.isNaN(20))
+console.log(Number.isNaN('20'))
+console.log(Number.isNaN(+'20X'))
+console.log(Number.isNaN(23 / 0))
 
-const movementsDescriptions = movements.map(
-  (mov, i, arr) =>
-    `Movement ${i + 1}. You ${mov > 0 ? 'deposited' : 'withdrew'} ${Math.abs(
-      mov
-    )}`
-)
-console.log(movementsDescriptions)
+// Checking if value is number
+console.log('isFinite ==================>')
+console.log(Number.isFinite(20))
+console.log(Number.isFinite('20'))
+console.log(Number.isFinite(+'20X'))
+console.log(Number.isFinite(23 / 0))
 
+console.log('isInteger ==================>')
+console.log(Number.isInteger(23))
+console.log(Number.isInteger(23.0))
 
 
-const deposits = movements.filter(mov => mov > 0)
-console.log(movements)
-console.log(deposits)
 
-const depositFor = []
-for (const mov of movements) {
-  if (mov > 0) {
-    depositFor.push(mov)
-  }
-}
-console.log(depositFor)
+console.log(Math.sqrt(25))
+console.log(25 ** (1 / 2))
+console.log(8 ** (1 / 3))
 
-const withdrawals = movements.filter(val => val < 0)
-console.log(withdrawals)
+console.log(Math.max(5, 18, 23, 11, 2))
+console.log(Math.max(5, 18, '23', 11, 2))
+console.log(Math.max(5, 18, '23px', 11, 2))
 
+console.log(Math.min(5, 18, 23, 11, 2))
 
-console.log(movements)
+console.log(Math.PI)
+console.log(Math.PI * Number.parseFloat('10px') ** 2)
 
-// accumulator -> SMOWBALL
-const balance = movements.reduce((accumulator, current, index) => {
-  console.log(`Iteration ${index}: ${accumulator} plus: ${current}`)
-  return accumulator + current
-}, 0)
+console.log(Math.trunc(Math.random() * 6) + 1)
+const randomInt = (min, max) =>
+  Math.floor(Math.random() * (max - min) + 1) + min
+// 0...1 -> 0...(max - min) -> min...max
 
-let balance2 = 0
-for (const mov of movements) {
-  balance2 += mov
-}
+// console.log(randomInt(10, 15))
 
-console.log(balance2)
+// Rounding integers
+console.log('Rounding integers =============>')
 
+console.log('round =============>')
+console.log(Math.round(23.3))
+console.log(Math.round(23.9))
 
+console.log('ceil =============>')
+console.log(Math.ceil(23.3))
+console.log(Math.ceil(23.9))
 
-// Maximum value
-const max = movements.reduce(
-  (acc, mov) => (acc > mov ? acc : mov),
-  movements[0]
-)
-console.log(max)
+console.log('floor =============>')
+console.log(Math.floor(23.3))
+console.log(Math.floor(23.3))
+console.log('trunc =============>')
+console.log(Math.trunc(23.3))
 
+console.log('trunc + floor = negative numbers =============>')
+console.log(Math.trunc(-23.3))
+console.log(Math.floor(-23.3))
 
+// Rounding decimals
+console.log('Rounding decimals =============>')
+console.log((2.7).toFixed(0))
+console.log((2.7).toFixed(3))
+console.log((2.345).toFixed(2))
+console.log(+(2.345).toFixed(2))
 
-const eurToUsd = 1.1
 
-// PIPELINE
-const totalDepositsUSD = movements
-  .filter(mov => mov > 0)
-  .map((mov, i, arr) => {
-    // console.log(arr)
-    return mov * eurToUsd
-  })
-  // .map(mov => mov * eurToUsd)
-  .reduce((acc, mov) => acc + mov, 0)
-console.log(totalDepositsUSD)
+console.log(5 % 2) // 5 = 2 * 2 + 1
+console.log(5 / 2)
+console.log(8 / 3) // 8 = 3 * 2 + 2
+console.log(8 % 2) // 8 = 2 * 4 + 0
 
+console.log(500 % 2 === 0)
+const isEven = n => n % 2 === 0
 
-const firstWithdrawal = movements.find(mov => mov < 0)
-console.log(movements)
-console.log(firstWithdrawal)
-
-console.log(accounts)
-const account = accounts.find(acc => acc.owner === 'Jessica Davis')
-console.log(account)
-
-
-console.log(movements)
-
-// EQUALITY
-console.log(movements.includes(-130))
-
-// SOME CONDITION
-console.log(movements.some(mov => mov === -130))
-
-const anyDeposits = movements.some(mov => mov > 1500)
-console.log(anyDeposits)
-
-
-// EVERY
-console.log(movements.every(mov => mov > 0))
-
-console.log(account4.movements)
-console.log(account4.movements.every(mov => mov > 0))
-
-// Separate callback
-const deposit = mov => mov > 0
-console.log(movements.some(deposit))
-console.log(movements.every(deposit))
-console.log(movements.filter(deposit))
-
-
-const arr = [[1, 2, 3], [4, 5, 6], 7, 8]
-console.log(arr.flat())
-
-const arrDeep = [[[1, 2], 3], [4, [5, 6]], 7, 8]
-console.log(arrDeep.flat(2))
-
-// flat
-const overalBalance = accounts
-  .map(acc => acc.movements)
-  .flat()
-  .reduce((acc, mov) => acc + mov, 0)
-console.log(overalBalance)
-
-// flatMap
-const overalBalanceTwo = accounts
-  .flatMap(acc => acc.movements)
-  .reduce((acc, mov) => acc + mov, 0)
-console.log(overalBalanceTwo)
-
-
-
-// Strings
-const owners = ['Jonas', 'Zach', 'Adam', 'Martha']
-console.log(owners.sort())
-console.log(owners)
-
-// nUmbers
-console.log(movements)
-// console.log(movements.sort())
-
-// return < 0, A, B (keep order)
-// return > 0, B, A (swith order)
-
-// Ascending
-// movements.sort((a, b) => {
-//   if (a > b) return 1
-//   if (b > a) return -1
-// })
-movements.sort((a, b) => a - b)
-console.log(movements)
-
-// Descending
-// movements.sort((a, b) => {
-//   if (a > b) return -1
-//   if (b > a) return 1
-// })
-movements.sort((a, b) => b - a)
-console.log(movements)
-
-
-const arr = [1, 2, 3, 4, 5, 6, 7]
-console.log(new Array(1, 2, 3, 4, 5, 6, 7))
-
-// Empty arrays + fill method
-const x = new Array(7)
-console.log(x)
-// console.log(x.map(() => 5))
-x.fill(1, 3, 5)
-x.fill(1)
-console.log(x)
-
-arr.fill(23, 2, 6)
-console.log(arr)
-
-// Array.from
-const y = Array.from({ length: 7 }, () => 9)
-console.log(y)
-
-const z = Array.from({ length: 7 }, (_, i) => i + 1)
-console.log(z)
+console.log(isEven(8))
+console.log(isEven(23))
+console.log(isEven(514))
 
 labelBalance.addEventListener('click', function () {
-  const movementUI = Array.from(
-    document.querySelectorAll('.movements__value'),
-    el => Number(el.textContent.replace(' €', ''))
-  )
-
-  console.log(movementUI)
+  ;[...document.querySelectorAll('.movements__row')].forEach(function (row, i) {
+    if (i % 2 === 0) row.style.backgroundColor = 'orangered'
+    if (i % 3 === 0) row.style.backgroundColor = 'blue'
+  })
 })
 
-const movementsUI2 = [...document.querySelectorAll('.movements__value')]
-console.log(movementsUI2)
 
 
+// 287.460.000.000
+const diameter = 287_460_000_000
+console.log(diameter)
 
-// 1.
-const bankDepositSum = accounts
-  .flatMap(acc => acc.movements)
-  .filter(mov => mov > 0)
-  .reduce((sum, curr) => sum + curr, 0)
-console.log(bankDepositSum)
+const priceCents = 345_99
+console.log(priceCents)
 
-// 2.
-// const numDeposits1000 = accounts
-//   .flatMap(acc => acc.movements)
-//   .filter(mov => mov > 1000).length
+const transferFee1 = 15_00
+const transferFee2 = 1_500
+console.log(transferFee1, transferFee2)
 
-const numDeposits1000 = accounts
-  .flatMap(acc => acc.movements)
-  .reduce((count, current) => (current >= 1000 ? ++count : count), 0)
+const PI = 3.14_15_92_65_35_89
+console.log(Math.PI, PI)
 
-console.log(numDeposits1000)
+console.log(Number('230_000'))
 
-// Prefixed ++ operator
-let a = 10
-console.log(++a)
-console.log(a)
 
-// 3.
-const { deposits, withdrawals } = accounts
-  .flatMap(acc => acc.movements)
-  .reduce(
-    (sums, cur) => {
-      // cur > 0 ? (sums.deposits += cur) : (sums.withdrawals += cur)
-      sums[cur > 0 ? 'deposits' : 'withdrawals'] += cur
-      return sums
-    },
-    { deposits: 0, withdrawals: 0 }
-  )
+console.log(2 ** 53 - 1)
+console.log(Number.MAX_SAFE_INTEGER)
+console.log(2 ** 53 + 1)
+console.log(2 ** 53 + 2)
+console.log(2 ** 53 + 3)
+console.log(2 ** 53 + 4)
+console.log(2 ** 53 + 5)
 
-console.log(deposits, withdrawals)
+console.log(4838423526261203213410266n)
+console.log(BigInt(4838))
 
-// 4.
-// this is a nice title -> This Is a Nice Title
-const convertTitleCase = function (title) {
-  const exceptions = ['a', 'an', 'the', 'but', 'or', 'on', 'in', 'with']
+// Operations
+console.log(10000n + 10000n)
+console.log(333333333333333333333333333333n * 10000000n)
+// console.log(Math.sqrt(16n))
 
-  const titleCase = title
-    .toLowerCase()
-    .split(' ')
-    .map(word =>
-      exceptions.includes(word) ? word : word[0].toUpperCase() + word.slice(1)
-    )
-    .join(' ')
-  return titleCase
-}
+const huge = 2024654123165413134631n
+const num = 23
+console.log(huge * BigInt(num))
 
-console.log(convertTitleCase('this is a nice title'))
-console.log(convertTitleCase('this is a LONG title but not too long'))
-console.log(convertTitleCase('and here is another title with an EXAMPLE'))
+// Exceptions
+console.log(20n > 15)
+console.log(20n === 20)
+console.log(typeof 20n)
+console.log(20n == 20)
+
+console.log(huge + ' is REALLY BIG!!!')
+
+// Divisions
+console.log(11n / 3n)
+console.log(10 / 3)
+
+// Create a date
+const now = new Date()
+console.log(now)
+
+console.log(new Date('Aug 02 2020 18:05:41'))
+console.log(new Date('December 24, 3025'))
+console.log(new Date(account1.movementsDates[0]))
+
+console.log(new Date(2037, 10, 19, 15, 23, 5))
+console.log(new Date(2037, 10, 31, 15, 23, 5))
+
+console.log(new Date(0))
+console.log(new Date(3 * 24 * 60 * 60 * 1000))
+
+
+// Working with dates
+const future = new Date(2037, 10, 19, 15, 23)
+console.log(future)
+console.log(future.getFullYear())
+console.log(future.getMonth())
+console.log(future.getDate())
+console.log(future.getDay()) // week
+console.log(future.getHours())
+console.log(future.getMinutes())
+console.log(future.getSeconds())
+console.log(future.toISOString())
+console.log(future.getTime())
+
+console.log(new Date(2142246180000))
+
+console.log(Date.now())
+
+future.setFullYear(2040)
+console.log(future)
+
+const future = new Date(2037, 10, 19, 15, 23)
+console.log(+future)
+
+const calsDaysPassed = (date1, date2) =>
+  Math.abs(date2 - date1) / (1000 * 60 * 60 * 24)
+
+const days1 = calsDaysPassed(new Date(2037, 3, 14), new Date(2037, 3, 4))
+console.log(days1)
+
 */
